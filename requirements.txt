@@ -1,0 +1,17 @@
+python == 3.8.8
+numpy == 1.23.4
+flask == 1.1.2 
+werkzeug == 1.0.1
+transformers == 4.28.1
+pandas == 2.0.1
+scipy == 1.10.1
+pip == 23.1.2
+requests == 2.29.0
+torch == 1.10.2
+torchvision == 0.11.3
+torchaudio
+simpletransformers == 0.61.6
+sentence-transformers
+faiss-cpu
+scikit-learn == 1.2.2
+typing == 3.6.6
