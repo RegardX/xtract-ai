@@ -83,15 +83,12 @@ def xtract():
         if language == "tr":
             query = models.translate(query)
         context, author = compute_relevance(query)
-        score, answer = models.extractive_qa(query, context)["score"], models.extractive_qa(query, context)["answer"]
-        if score < 0.50:
-            gqa_answer = models.generative_qa(query, context)
-            return_answer = gqa_answer or f"You can consult with {author} about this matter."
-        else:
-            return_answer = answer
+        gqa_answer = models.generative_qa(query, context)
+        return_answer = gqa_answer or f"You can consult with {author} about this matter."
 
         return jsonify({
             "Result": return_answer,
+            "Author": author,
             "IsSucceed": True,
             "ErrorCode": "",
             "ErrorMessage": ""
