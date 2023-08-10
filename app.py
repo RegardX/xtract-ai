@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from flask import Flask, jsonify, request
 from transformers import (AutoModel, AutoModelWithLMHead, AutoTokenizer, 
-                          pipeline, TFMarianMTModel)
+                          pipeline, MarianMTModel)
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import logging
@@ -25,7 +25,7 @@ MODEL_PATHS = {
 class ModelLoader:
     def __init__(self, model_paths):
         self.language_detector = pipeline("text-classification", model=model_paths['language_detection'])
-        self.translation_model = TFMarianMTModel.from_pretrained(model_paths['translation'])
+        self.translation_model = MarianMTModel.from_pretrained(model_paths['translation'])
         self.translation_tokenizer = AutoTokenizer.from_pretrained(model_paths['translation'])
         self.qa_t5_tokenizer = AutoTokenizer.from_pretrained(model_paths['qa_t5'])
         self.qa_t5_model = AutoModelWithLMHead.from_pretrained(model_paths['qa_t5'])
