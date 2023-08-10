@@ -1,10 +1,13 @@
 import pandas as pd
+import numpy as np
 from flask import Flask, jsonify, request
 from transformers import (AutoModel, AutoModelWithLMHead, AutoTokenizer, 
                           pipeline, TFMarianMTModel)
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import logging
+from sentence_transformers import SentenceTransformer
+import faiss
 
 # Logger configuration
 logging.basicConfig(level=logging.INFO)
@@ -48,16 +51,37 @@ class ModelLoader:
 
 models = ModelLoader(MODEL_PATHS)
 
-# Relevance computation function
+
+
+#Relevance computation using Faiss
+
+
 def compute_relevance(query):
-    documents = DATA.Text.tolist()
-    authors = DATA.Names.tolist()
-    vectorizer = TfidfVectorizer()
-    tfidf_matrix = vectorizer.fit_transform(documents)
-    query_vector = vectorizer.transform([query])
-    cosine_similarities = cosine_similarity(query_vector, tfidf_matrix)
-    most_relevant_idx = cosine_similarities.argmax()
-    return documents[most_relevant_idx], authors[most_relevant_idx]
+  
+    model = SentenceTransformer('paraphrase-distilroberta-base-v1')
+
+
+    df = pd.DataFrame({
+        'texts': DATA.Text.tolist(),
+        'author' : DATA.Names.tolist()
+    })
+
+ 
+    embeddings = model.encode(df['texts'].tolist())
+
+    index = faiss.IndexFlatL2(embeddings.shape[1])
+    index.add(embeddings)
+
+
+    query_embedding = model.encode(query)
+    query_embedding = np.array(query_embedding).reshape(1, -1)  
+
+
+    D, I = index.search(query_embedding, k=1)  
+    most_similar_text_index = I[0][0]
+    most_similar_text = df.iloc[most_similar_text_index]['texts']
+    return most_similar_text, df.author[most_similar_text_index]
+
 
 # Flask application
 app = Flask(__name__)
