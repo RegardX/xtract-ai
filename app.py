@@ -18,7 +18,6 @@ DATA = pd.read_csv("policies_procedures_data.csv")
 MODEL_PATHS = {
     'language_detection': "models/xlm-roberta-base-language-detection",
     'translation': "models/opus-mt-tr-en",
-    'qa_roberta': "models/question-answering-roberta-base-s",
     'qa_t5': "models/t5-base-finetuned-question-answering"
 }
 
@@ -28,7 +27,6 @@ class ModelLoader:
         self.language_detector = pipeline("text-classification", model=model_paths['language_detection'])
         self.translation_model = TFMarianMTModel.from_pretrained(model_paths['translation'])
         self.translation_tokenizer = AutoTokenizer.from_pretrained(model_paths['translation'])
-        self.qa_roberta = pipeline("question-answering", model=model_paths['qa_roberta'])
         self.qa_t5_tokenizer = AutoTokenizer.from_pretrained(model_paths['qa_t5'])
         self.qa_t5_model = AutoModelWithLMHead.from_pretrained(model_paths['qa_t5'])
 
@@ -40,8 +38,6 @@ class ModelLoader:
         gen = self.translation_model.generate(**batch)
         return self.translation_tokenizer.batch_decode(gen, skip_special_tokens=True)[0]
 
-    def extractive_qa(self, question, context):
-        return self.qa_roberta(question=question, context=context)
 
     def generative_qa(self, question, context):
         whole_text = f"question: {question} context: {context}"
@@ -58,7 +54,7 @@ models = ModelLoader(MODEL_PATHS)
 
 def compute_relevance(query):
   
-    model = SentenceTransformer('paraphrase-distilroberta-base-v1')
+    model = SentenceTransformer('sentence-transformers/paraphrase-distilroberta-base-v1')
 
 
     df = pd.DataFrame({
