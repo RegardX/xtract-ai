@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from flask import Flask, jsonify, request
 from transformers import (AutoModel, AutoModelWithLMHead, AutoTokenizer, 
-                          pipeline, MarianMTModel)
+                          pipeline, TFMarianMTModel)
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import logging
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 DATA = pd.read_csv("policies_procedures_data.csv")
 MODEL_PATHS = {
     'language_detection': "models/xlm-roberta-base-language-detection",
-    'translation': "models/opus-mt-tr-en",
+    'translation': "Helsinki-NLP/opus-mt-tc-big-tr-en",
     'qa_t5': "models/t5-base-finetuned-question-answering"
 }
 
@@ -25,7 +25,7 @@ MODEL_PATHS = {
 class ModelLoader:
     def __init__(self, model_paths):
         self.language_detector = pipeline("text-classification", model=model_paths['language_detection'])
-        self.translation_model = MarianMTModel.from_pretrained(model_paths['translation'])
+        self.translation_model = TFMarianMTModel.from_pretrained(model_paths['translation'])
         self.translation_tokenizer = AutoTokenizer.from_pretrained(model_paths['translation'])
         self.qa_t5_tokenizer = AutoTokenizer.from_pretrained(model_paths['qa_t5'])
         self.qa_t5_model = AutoModelWithLMHead.from_pretrained(model_paths['qa_t5'])
@@ -40,10 +40,12 @@ class ModelLoader:
 
 
     def generative_qa(self, question, context):
-        whole_text = f"question: {question} context: {context}"
+        whole_text = f"Answer the question {question} with given context: {context}. Only use the context not your imagination."
         encoded_input = self.qa_t5_tokenizer([whole_text], return_tensors='pt', max_length=512, truncation=True)
         output = self.qa_t5_model.generate(input_ids=encoded_input.input_ids, attention_mask=encoded_input.attention_mask)
         return self.qa_t5_tokenizer.decode(output[0], skip_special_tokens=True)
+    
+    
 
 models = ModelLoader(MODEL_PATHS)
 
@@ -76,7 +78,8 @@ def compute_relevance(query):
     D, I = index.search(query_embedding, k=1)  
     most_similar_text_index = I[0][0]
     most_similar_text = df.iloc[most_similar_text_index]['texts']
-    return most_similar_text, df.author[most_similar_text_index]
+    similarity_score = 1 - D[0][0]
+    return most_similar_text, df.author[most_similar_text_index], similarity_score
 
 
 # Flask application
@@ -102,9 +105,13 @@ def xtract():
         language = models.detect_language(query)
         if language == "tr":
             query = models.translate(query)
-        context, author = compute_relevance(query)
-        gqa_answer = models.generative_qa(query, context)
-        return_answer = gqa_answer or f"You can consult with {author} about this matter."
+        context, author, similarity = compute_relevance(query)
+        
+        if similarity < -60:
+            return_answer = "This topic seems beyond the scope of my knowledge."
+        else:
+            gqa_answer = models.generative_qa(query, context)
+            return_answer = gqa_answer or f"You can consult with {author} about this matter."
 
         return jsonify({
             "Result": return_answer,
