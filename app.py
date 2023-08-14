@@ -3,7 +3,7 @@ import numpy as np
 from typing import List
 from flask import Flask, jsonify, request
 from transformers import (AutoModel, AutoModelWithLMHead, AutoTokenizer, 
-                          pipeline, TFMarianMTModel)
+                          pipeline)
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import logging
@@ -26,7 +26,7 @@ MODEL_PATHS = {
 class ModelLoader:
     def __init__(self, model_paths):
         self.language_detector = pipeline("text-classification", model=model_paths['language_detection'])
-        self.translation_model = TFMarianMTModel.from_pretrained(model_paths['translation'])
+        self.translation_model = pipeline("translation", model=model_paths['translation'])
         self.translation_tokenizer = AutoTokenizer.from_pretrained(model_paths['translation'])
         self.qa_t5_tokenizer = AutoTokenizer.from_pretrained(model_paths['qa_t5'])
         self.qa_t5_model = AutoModelWithLMHead.from_pretrained(model_paths['qa_t5'])
@@ -35,9 +35,7 @@ class ModelLoader:
         return self.language_detector(text)[0]["label"]
 
     def translate(self, text):
-        batch = self.translation_tokenizer([text], return_tensors="tf")
-        gen = self.translation_model.generate(**batch)
-        return self.translation_tokenizer.batch_decode(gen, skip_special_tokens=True)[0]
+        return self.translation_model(text)[0]['translation_text']
 
 
     def generative_qa(self, question, context):
