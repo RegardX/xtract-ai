@@ -39,7 +39,7 @@ class ModelLoader:
 
 
     def generative_qa(self, question, context):
-        whole_text = f"Answer the question {question} with given context: {context}. Only use the context not your imagination."
+        whole_text = f"Question: {question}, Context: {context}. Only use the context not your imagination."
         encoded_input = self.qa_t5_tokenizer([whole_text], return_tensors='pt', max_length=512, truncation=True)
         output = self.qa_t5_model.generate(input_ids=encoded_input.input_ids, attention_mask=encoded_input.attention_mask)
         return self.qa_t5_tokenizer.decode(output[0], skip_special_tokens=True)
