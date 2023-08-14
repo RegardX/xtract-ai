@@ -78,7 +78,7 @@ def compute_relevance(query):
     most_similar_text_index = I[0][0]
     most_similar_text = df.iloc[most_similar_text_index]['texts']
     similarity_score = 1 - D[0][0]
-    return most_similar_text, df.author[most_similar_text_index], similarity_score
+    return most_similar_text, df.author[most_similar_text_index], similarity_score, most_similar_text_index
 
 
 # Flask application
@@ -104,7 +104,7 @@ def xtract():
         language = models.detect_language(query)
         if language == "tr":
             query = models.translate(query)
-        context, author, similarity = compute_relevance(query)
+        context, author, similarity, index = compute_relevance(query)
         
         if similarity < -60:
             return_answer = "This topic seems beyond the scope of my knowledge."
@@ -115,6 +115,7 @@ def xtract():
         return jsonify({
             "Result": return_answer,
             "Author": author,
+            "Document_Index": index,
             "IsSucceed": True,
             "ErrorCode": "",
             "ErrorMessage": ""
