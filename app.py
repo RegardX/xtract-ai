@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from typing import List
 from flask import Flask, jsonify, request
 from transformers import (AutoModel, AutoModelWithLMHead, AutoTokenizer, 
                           pipeline, TFMarianMTModel)
