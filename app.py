@@ -1,3 +1,7 @@
+import warnings
+
+warnings.filterwarnings("ignore")
+
 import pandas as pd
 import numpy as np
 from typing import List
@@ -39,9 +43,13 @@ class ModelLoader:
 
 
     def generative_qa(self, question, context):
-        whole_text = f"Question: {question}, Context: {context}. Only use the context not your imagination."
+        whole_text = f"""Answer the question based on the context below. Keep the answer as much long as possible and truthful.\
+        Question: {question}\
+        Context: {context}\
+        Only use the context not your imagination."""
         encoded_input = self.qa_t5_tokenizer([whole_text], return_tensors='pt', max_length=512, truncation=True)
-        output = self.qa_t5_model.generate(input_ids=encoded_input.input_ids, attention_mask=encoded_input.attention_mask)
+        output = self.qa_t5_model.generate(input_ids=encoded_input.input_ids, attention_mask=encoded_input.attention_mask,
+                                          max_length=300, num_beams=4, no_repeat_ngram_size=2,length_penalty=2.0,early_stopping=True)
         return self.qa_t5_tokenizer.decode(output[0], skip_special_tokens=True)
     
     
@@ -78,7 +86,7 @@ def compute_relevance(query):
     most_similar_text_index = I[0][0]
     most_similar_text = df.iloc[most_similar_text_index]['texts']
     similarity_score = 1 - D[0][0]
-    return most_similar_text, df.author[most_similar_text_index], similarity_score
+    return most_similar_text, df.author[most_similar_text_index], similarity_score, most_similar_text_index
 
 
 # Flask application
@@ -104,8 +112,7 @@ def xtract():
         language = models.detect_language(query)
         if language == "tr":
             query = models.translate(query)
-        context, author, similarity = compute_relevance(query)
-        
+        context, author, similarity, dc_index = compute_relevance(query)
         if similarity < -60:
             return_answer = "This topic seems beyond the scope of my knowledge."
         else:
@@ -115,6 +122,8 @@ def xtract():
         return jsonify({
             "Result": return_answer,
             "Author": author,
+            "Topic": DATA.iloc[dc_index]['Subtopic'],
+            "Doc_Index": str(dc_index),
             "IsSucceed": True,
             "ErrorCode": "",
             "ErrorMessage": ""
